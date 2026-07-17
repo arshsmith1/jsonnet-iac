@@ -479,23 +479,23 @@ env =
 
 ### Mixins
 
-*   better without any argument
+Prefer separate named mixins for clarity
 
-    > [!WARNING]
-    > Bad practice:
-    > ```yaml
-    >   + cloud_monitoring.include(true)
-    >     ...
-    >   + cloud_monitoring.include(false)
-    > ```
+> [!WARNING]
+> Bad practice:
+> ```yaml
+>   + cloud_monitoring.include(true)
+>     ...
+>   + cloud_monitoring.include(false)
+> ```
 
-    > [!NOTE]
-    > Good practice:
-    > ```yaml
-    >   + cloud_monitoring.include
-    >     ...
-    >   + cloud_monitoring.exclude
-    > ```
+> [!NOTE]
+> Good practice:
+> ```yaml
+>   + cloud_monitoring.include
+>     ...
+>   + cloud_monitoring.exclude
+> ```
 
 ### Environment related logic should be in env.jsonnet files
 
