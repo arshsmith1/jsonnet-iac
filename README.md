@@ -382,33 +382,37 @@ If there is `name` arg in terraform resource, hcllabels always should have
 
 Put `hcllabels` and `tfimport` fields first (they are used by `hcl.resource`)
 
-```yaml {.bad highlight="context::: content:name content:dns_name"}
-my_comp_resource(): {
-  hcl.resource {
-    name: base.env,
-    tfimport:: '%s/%s' % [base.project_id, self.name],
-    dns_name: '%s.gcp.sapcloud.goog.' % self.name,
-    hcllabels:: ['google_dns_managed_zone', std.strToSnake(self.name)],
-  },
-},
-```
+> [!WARNING]
+> Bad practice:
+> ```yaml
+> my_comp_resource(): {
+>   hcl.resource {
+>     name: base.env,
+>     tfimport:: '%s/%s' % [base.project_id, self.name],
+>     dns_name: '%s.gcp.sapcloud.goog.' % self.name,
+>     hcllabels:: ['google_dns_managed_zone', std.strToSnake(self.name)],
+>   },
+> },
+> ```
 
-```yaml {.good highlight="context::: content:name content:dns_name"}
-my_comp_resource(
-  name='%(env)s-%(special_value)s',
-  dns_name='%(env)s.gcp.sapcloud.goog.'
-): {
-  hcl.resource {
-    hcllabels:: ['google_dns_managed_zone', std.strToSnake(self.name)],
-    tfimport:: '%s/%s' % [base.project_id, self.name],
-    name: name % base {
-      // can be dynamically calculated, e.g. std.asciiUpper(base.project_id)
-      special_value: 123,
-    },
-    dns_name: dns_name % base,
-  },
-},
-```
+> [!NOTE]
+> Good practice:
+> ```yaml
+> my_comp_resource(
+>   name='%(env)s-%(special_value)s',
+>   dns_name='%(env)s.gcp.sapcloud.goog.'
+> ): {
+>   hcl.resource {
+>     hcllabels:: ['google_dns_managed_zone', std.strToSnake(self.name)],
+>     tfimport:: '%s/%s' % [base.project_id, self.name],
+>     name: name % base {
+>       // can be dynamically calculated, e.g. std.asciiUpper(base.project_id)
+>       special_value: 123,
+>     },
+>     dns_name: dns_name % base,
+>   },
+> },
+> ```
 
 ### Abstract `hcl.resource`
 
@@ -420,31 +424,35 @@ field, which are then extended to create the final resource.
 However, if there is a need to avoid logic duplication then create a common
 object that contains the other shared fields of the resource.
 
-```yaml {.bad highlight="context:hcl.resource context:hcllabels"}
-local abstract_cname = hcl.resource {
-  hcllabels:: ['google_dns_managed_zone', std.strToSnake(self.name)],
-  dns_name: '%s.gcp.sapcloud.goog.' % self.name,
-  project: self.project_id,
-  <... other fields ...>
-};
+> [!WARNING]
+> Bad practice:
+> ```yaml
+> local abstract_cname = hcl.resource {
+>   hcllabels:: ['google_dns_managed_zone', std.strToSnake(self.name)],
+>   dns_name: '%s.gcp.sapcloud.goog.' % self.name,
+>   project: self.project_id,
+>   <... other fields ...>
+> };
+> 
+> cname: abstract_cname {
+>   name: self.env,
+> },
+> ```
 
-cname: abstract_cname {
-  name: self.env,
-},
-```
-
-```yaml {.good highlight="context:hcl.resource context:hcllabels"}
-local my_common_fields = hcl.resource {
-  dns_name: '%s.gcp.sapcloud.goog.' % self.name,
-  project: self.project_id,
-  <... other fields ...>
-};
-
-cname: hcl.resource {
-  hcllabels:: ['google_dns_managed_zone', std.strToSnake(self.name)],
-  name: self.env,
-} + my_common_fields,
-```
+> [!NOTE]
+> Good practice:
+> ```yaml
+> local my_common_fields = hcl.resource {
+>   dns_name: '%s.gcp.sapcloud.goog.' % self.name,
+>   project: self.project_id,
+>   <... other fields ...>
+> };
+> 
+> cname: hcl.resource {
+>   hcllabels:: ['google_dns_managed_zone', std.strToSnake(self.name)],
+>   name: self.env,
+> } + my_common_fields,
+> ```
 
 ### Metadata for both `env` and `component` levels
 
@@ -473,17 +481,21 @@ env =
 
 *   better without any argument
 
-    ```yaml {.bad highlight="context:include(true) context:include(false)"}
-      + cloud_monitoring.include(true)
-        ...
-      + cloud_monitoring.include(false)
-    ```
+    > [!WARNING]
+    > Bad practice:
+    > ```yaml
+    >   + cloud_monitoring.include(true)
+    >     ...
+    >   + cloud_monitoring.include(false)
+    > ```
 
-    ```yaml {.good}
-      + cloud_monitoring.include
-        ...
-      + cloud_monitoring.exclude
-    ```
+    > [!NOTE]
+    > Good practice:
+    > ```yaml
+    >   + cloud_monitoring.include
+    >     ...
+    >   + cloud_monitoring.exclude
+    > ```
 
 ### Environment related logic should be in env.jsonnet files
 
@@ -491,81 +503,93 @@ It can be tempting to "save extra couple lines of code" but will end up in
 additional layer of indirection, which in a long run will make it hard to
 understand the code
 
-```yaml {.bad}
-# project.libsonnet file
-{
-central: feature1 + feature2,
-}
+> [!WARNING]
+> Bad practice:
+> ```yaml
+> # project.libsonnet file
+> {
+> central: feature1 + feature2,
+> }
+> 
+> # central_sbx.jsonnet file
+> ...
+> project.central
+> ...
+> 
+> # central_prod.jsonnet file
+> ...
+> project.central
+> ...
+> ```
 
-# central_sbx.jsonnet file
-...
-project.central
-...
-
-# central_prod.jsonnet file
-...
-project.central
-...
-```
-
-```yaml {.good}
-# central_sbx.jsonnet file
-...
-+ feature1
-+ feature2
-...
-
-# central_prod.jsonnet file
-...
-+ feature1
-+ feature2
-...
-```
+> [!NOTE]
+> Good practice:
+> ```yaml
+> # central_sbx.jsonnet file
+> ...
+> + feature1
+> + feature2
+> ...
+> 
+> # central_prod.jsonnet file
+> ...
+> + feature1
+> + feature2
+> ...
+> ```
 
 ### Every field on a new line
 
 Following that rule will help for jsonnet readers' eye easier read object
 structures.
 
-```yaml {.bad}
-foo_mixin(name, resource):: { bar+:: { [name]+: { resources+:: {
-internal+: resource } }, } },
-```
+> [!WARNING]
+> Bad practice:
+> ```yaml
+> foo_mixin(name, resource):: { bar+:: { [name]+: { resources+:: {
+> internal+: resource } }, } },
+> ```
 
-```yaml {.good}
-foo_mixin(name, resource):: {
-  bar+:: {
-    [name]+: {
-      resources+:: {
-        internal+: resource,
-      },
-    },
-  },
-},
-```
+> [!NOTE]
+> Good practice:
+> ```yaml
+> foo_mixin(name, resource):: {
+>   bar+:: {
+>     [name]+: {
+>       resources+:: {
+>         internal+: resource,
+>       },
+>     },
+>   },
+> },
+> ```
 
 ### Local fields
 
 Declare a field `local` if it's used in current scope (file or object)
 
-```yaml {.bad}
-foo_mixin: {
-  ...
-}
+> [!WARNING]
+> Bad practice:
+> ```yaml
+> foo_mixin: {
+>   ...
+> }
+> 
+> main_object: {
+>   a_field: $.foo_mixin,
+> }
+> ```
 
-main_object: {
-  a_field: $.foo_mixin,
-}
-```
-
-```yaml {.good}
-main_object: {
-  local foo_mixin = {
-    ...
-  },
-  a_field: foo_mixin,
-}
-```
+> [!NOTE]
+> Good practice:
+> ```yaml
+> main_object: {
+>   local foo_mixin = {
+>     ...
+>   },
+>   a_field: foo_mixin,
+> }
+> ```
 
 ### Resources references
 
@@ -577,51 +601,56 @@ again. So the name of the resource is defined in only one place where it's
 created, and later renaming will be used by all referencing resources
 automatically.
 
-```yaml {.bad highlight="context:hcl.expression"}
-foo_resource: hcl.resource {
-  hcllabels:: ['google_compute_instance', 'foo_name'],
-}
+> [!WARNING]
+> Bad practice:
+> ```yaml
+> foo_resource: hcl.resource {
+>   hcllabels:: ['google_compute_instance', 'foo_name'],
+> }
+> 
+> bar_resource: hcl.resource {
+>   hcllabels:: ['google_compute_instance', 'bar_name'],
+>   foo_id: hcl.expression('google_compute_instance.foo_name.id')
+>   foo_ref: hcl.expression('google_compute_instance.foo_name')
+> }
+> ```
 
-bar_resource: hcl.resource {
-  hcllabels:: ['google_compute_instance', 'bar_name'],
-  foo_id: hcl.expression('google_compute_instance.foo_name.id')
-  foo_ref: hcl.expression('google_compute_instance.foo_name')
-}
-```
-
-```yaml {.good highlight="context:self_ref context:self_link"}
-# This code produces the same terraform code as the code above.
-
-foo_resource: hcl.resource {
-  hcllabels:: ['google_compute_instance', 'foo_name'],
-},
-
-local foo_resource = self.foo_resource,
-bar_resource: hcl.resource {
-  hcllabels:: ['google_compute_instance', std.strToSnake(self.name)],
-  name: 'bar_name',
-  foo_id: foo_resource.self_ref('id')
-  foo_ref: foo_resource.self_link
-}
-```
+> [!NOTE]
+> Good practice:
+> ```yaml
+> # This code produces the same terraform code as the code above.
+> 
+> foo_resource: hcl.resource {
+>   hcllabels:: ['google_compute_instance', 'foo_name'],
+> },
+> 
+> local foo_resource = self.foo_resource,
+> bar_resource: hcl.resource {
+>   hcllabels:: ['google_compute_instance', std.strToSnake(self.name)],
+>   name: 'bar_name',
+>   foo_id: foo_resource.self_ref('id')
+>   foo_ref: foo_resource.self_link
+> }
+> ```
 
 ### Mixins description
 
 Description template is like the below (with <...> placeholders)
 
-```yaml {.good}
-  // <Env-level or comp-level> mixin.
-  // Creates <tf resource name> terraform resource.
-  // NOTE <if there is something important to mention, e.g. usual use case>
-  // IMPORTANT: <e.g. dependencies on other mixins>
-  // Args:
-  //   arg1: <optional if has default value>, <description>.
-  // Example: e.g. for component level like below
-  // + environment.component(
-  //     ...
-  //     + vm.attach_regional_disk('my-regional-disk')
-
-```
+> [!NOTE]
+> Recommended template:
+> ```yaml
+>   // <Env-level or comp-level> mixin.
+>   // Creates <tf resource name> terraform resource.
+>   // NOTE <if there is something important to mention, e.g. usual use case>
+>   // IMPORTANT: <e.g. dependencies on other mixins>
+>   // Args:
+>   //   arg1: <optional if has default value>, <description>.
+>   // Example: e.g. for component level like below
+>   // + environment.component(
+>   //     ...
+>   //     + vm.attach_regional_disk('my-regional-disk')
+> ```
 
 ## How to extend functionality
 
