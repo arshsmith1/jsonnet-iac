@@ -70,6 +70,24 @@ local hcl = import 'hcl.libsonnet';
     ['bucket_' + logical_name + '.tf']: hcl.manifest(self.buckets[logical_name], base.tf_comments),
   },
 
+  // Env-level mixin.
+  // Creates a google_storage_bucket data resource for an existing bucket.
+  // Args:
+  //   logical_name: The logical name of the bucket.
+  //   name: The actual bucket name pattern.
+  existing(logical_name, name='%(project_id)s-%(logical_name)s'): {
+    local base = self.base,
+    buckets+:: {
+      [logical_name]+: {
+        bucket: hcl.data {
+          hcllabels:: ['google_storage_bucket', hcl.strToSnake(logical_name)],
+          name: name % base { logical_name: logical_name },
+        },
+      },
+    },
+    ['bucket_' + logical_name + '.tf']: hcl.manifest(self.buckets[logical_name], base.tf_comments),
+  },
+
   // Env-level and comp-level mixin.
   // Adds a google_storage_bucket_iam_binding resource.
   // Args:
