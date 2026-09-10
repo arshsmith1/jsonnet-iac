@@ -374,16 +374,20 @@ local hcl = import 'hcl.libsonnet';
   },
 
   // Component-level mixin.
-  // Sets natwork tags to VMs of a component.
+  // Sets network tags to VMs of a component.
   // Example:
   // + environment.component(
   //     ...
-  //      + vm.network_tags('my_tag')
+  //      + vm.network_tags(['my_tag'])
   network_tags(tags): {
     by_instance+: {
+      local base = self.base,
       compute+: {
         vm+: {
-          tags: tags,
+          tags:
+            local resolve(t) = if std.isString(t) then t % base else t;
+            if std.isArray(tags) then [resolve(t) for t in tags]
+            else [resolve(tags)],
         },
       },
     },

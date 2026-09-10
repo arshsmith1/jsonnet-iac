@@ -342,56 +342,31 @@ local hcl = import 'hcl.libsonnet';
           )
         else
           self[to]
-      else to,
+      else if std.isObject(to) && 'vpc_name' in to && 'network' in to then
+        to
+      else
+        error 'Unsupported peering type to %s' % std.toString(to),
       peering+: [
         hcl.resource {
           hcllabels:: ['google_compute_network_peering', hcl.strToSnake(self.name)],
           tfimport:: '%s/%s/%s' % [from_vpc.project_id, from_vpc.network.name, self.name],
           network: from_vpc.network.self_link,
+          peer_vpc:: to_vpc,
+          local_vpc:: from_vpc,
+          local_vpc_name:: from_vpc.vpc_name,
+          peer_project_id:: to_vpc.project_id,
+          base:: base {
+            from: from,
+            to: to_vpc.vpc_name,
+            external_project_id_infix: if from_vpc.project_id == to_vpc.project_id then '' else '-' + to_vpc.project_id,
+          },
+          name: name % self.base,
+          peer_network: if from_vpc.project_id == to_vpc.project_id
+          then to_vpc.network.self_link
+          else 'projects/%s/global/networks/%s' % [to_vpc.project_id, to_vpc.network.name],
+          peer_network_name:: 'projects/%s/global/networks/%s' % [to_vpc.project_id, to_vpc.network.name],
         }
-
-        // Case 1: VPCs from the same project
-        + (
-          if from_vpc.project_id == to_vpc.project_id then {
-            name: name % base {
-              from: from,
-              to: to_vpc.vpc_name,
-              external_project_id_infix: '',
-            },
-            peer_network: to_vpc.network.self_link,
-            peer_network_name:: 'projects/%s/global/networks/%s' % [to_vpc.project_id, to_vpc.network.name],
-          }
-
-          // Case 2: peered VPC from another JSONNET GCP Project
-          else if 'base' in to_vpc then {
-            name: name % base {
-              from: from,
-              to: to_vpc.vpc_name,
-              external_project_id_infix: '-' + to_vpc.project_id,
-            },
-            peer_network: 'projects/%s/global/networks/%s' % [to_vpc.project_id, to_vpc.network.name],
-            // Fields below are the metadata of the peered VPC from jsonnet model, so can be used respectively by other jsonnet framework parts.
-            peer_jsonnet:: {  // peer jsonnet environment metadata
-              base:: to_vpc.base,
-              vpc_name:: to_vpc.vpc_name,
-            },
-            peer_project_id:: to_vpc.base.project_id,
-            local_vpc_name:: from_vpc.vpc_name,
-          }
-
-          // Case 3: so called "external project peering"
-          else if 'not_jsonnet_project' in to_vpc then {
-            base:: base {  // useful in downstream logic, e.g. to_vpc.peering_mixin.
-              from: from,
-              to: to_vpc.vpc_name,
-              external_project_id_infix: '-' + to_vpc.project_id,
-            },
-            name: name % self.base,
-            peer_network: 'projects/%s/global/networks/%s' % [to_vpc.project_id, to_vpc.vpc_name],
-          } + to_vpc.peering_mixin
-
-          else error 'Unsupported peering type to %s' % std.toString(to)
-        )
+        + (if 'peering_mixin' in to_vpc then to_vpc.peering_mixin else {})
         + customization,
       ],
     },
@@ -414,6 +389,14 @@ local hcl = import 'hcl.libsonnet';
     peering_mixin:: peering_mixin,
     project_id: project_id,
     vpc_name: vpc_name,
+    base:: {
+      project_id: project_id,
+      fname: null,
+    },
+    network:: {
+      name: vpc_name,
+      self_link: 'projects/%s/global/networks/%s' % [project_id, vpc_name],
+    },
   },
 
   // Env-level mixin.

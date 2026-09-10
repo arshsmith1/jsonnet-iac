@@ -433,7 +433,7 @@ object that contains the other shared fields of the resource.
 >   project: self.project_id,
 >   <... other fields ...>
 > };
-> 
+>
 > cname: abstract_cname {
 >   name: self.env,
 > },
@@ -447,7 +447,7 @@ object that contains the other shared fields of the resource.
 >   project: self.project_id,
 >   <... other fields ...>
 > };
-> 
+>
 > cname: hcl.resource {
 >   hcllabels:: ['google_dns_managed_zone', std.strToSnake(self.name)],
 >   name: self.env,
@@ -510,12 +510,12 @@ understand the code
 > {
 > central: feature1 + feature2,
 > }
-> 
+>
 > # central_sbx.jsonnet file
 > ...
 > project.central
 > ...
-> 
+>
 > # central_prod.jsonnet file
 > ...
 > project.central
@@ -530,7 +530,7 @@ understand the code
 > + feature1
 > + feature2
 > ...
-> 
+>
 > # central_prod.jsonnet file
 > ...
 > + feature1
@@ -574,7 +574,7 @@ Declare a field `local` if it's used in current scope (file or object)
 > foo_mixin: {
 >   ...
 > }
-> 
+>
 > main_object: {
 >   a_field: $.foo_mixin,
 > }
@@ -607,7 +607,7 @@ automatically.
 > foo_resource: hcl.resource {
 >   hcllabels:: ['google_compute_instance', 'foo_name'],
 > }
-> 
+>
 > bar_resource: hcl.resource {
 >   hcllabels:: ['google_compute_instance', 'bar_name'],
 >   foo_id: hcl.expression('google_compute_instance.foo_name.id')
@@ -619,11 +619,11 @@ automatically.
 > Good practice:
 > ```yaml
 > # This code produces the same terraform code as the code above.
-> 
+>
 > foo_resource: hcl.resource {
 >   hcllabels:: ['google_compute_instance', 'foo_name'],
 > },
-> 
+>
 > local foo_resource = self.foo_resource,
 > bar_resource: hcl.resource {
 >   hcllabels:: ['google_compute_instance', std.strToSnake(self.name)],
